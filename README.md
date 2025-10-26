@@ -12,39 +12,18 @@ pip install .
 
 ## Usage
 
-### Add optional fields
+### Rename files
 
 ```bash
-unique-fname add <path> [--add <fields>] [--rename] [-r]
+unique-fname rename <path> [--tags <tags>] [--rename] [-r]
 ```
 
 -   `<path>`: The path to process. Can be a file, a directory, or a glob pattern.
--   `--add <fields>`: The optional fields to add. Can be `checksum`, `date`, `time`, `number`.
+-   `--tags <tags>`: The tags to include in the filename. Can be `checksum`, `date`, `time`, `number`.
 -   `--rename`: Rename the file instead of printing the new name.
 -   `-r`, `--recursive`: Recursively process files in subdirectories.
 
-If `--add` is not specified, all optional fields will be added by default.
-
-### Remove optional fields
-
-```bash
-unique-fname remove <path> --remove <fields> [--rename] [-r]
-```
-
--   `<path>`: The path to process. Can be a file, a directory, or a glob pattern.
--   `--remove <fields>`: The optional fields to remove. Can be `checksum`, `date`, `time`, `number`.
--   `--rename`: Rename the file instead of printing the new name.
--   `-r`, `--recursive`: Recursively process files in subdirectories.
-
-### Clear all optional fields
-
-```bash
-unique-fname clear <path> [--rename] [-r]
-```
-
--   `<path>`: The path to process. Can be a file, a directory, or a glob pattern.
--   `--rename`: Rename the file instead of printing the new name.
--   `-r`, `--recursive`: Recursively process files in subdirectories.
+If `--tags` is not specified, all tags will be added by default.
 
 ### Find duplicate files
 
@@ -58,34 +37,34 @@ This command will recursively scan the files in the given path, parse the filena
 
 ## Examples
 
-### Add all optional fields to a file
+### Add all tags to a file
 
 ```bash
-unique-fname add foo.txt
+unique-fname rename foo.txt
 ```
 
 ### Add checksum and date to all .txt files in the current directory
 
 ```bash
-unique-fname add "*.txt" --add checksum date
+unique-fname rename "*.txt" --tags checksum date
 ```
 
 ### Rename all files in the `~/tmp/test` directory recursively
 
 ```bash
-unique-fname add ~/tmp/test -r --rename
+unique-fname rename ~/tmp/test -r --rename
 ```
 
 ### Remove the date field from a file
 
 ```bash
-unique-fname remove d41d8cd98f00b204e9800998ecf8427e-20011125-153008-0001-fn-foo.txt --remove date
+unique-fname rename d41d8cd98f00b204e9800998ecf8427e-20011125-153008-0001-fn-foo.txt --tags checksum time number
 ```
 
-### Clear all optional fields from a file
+### Clear all tags from a file
 
 ```bash
-unique-fname clear d41d8cd98f00b204e9800998ecf8427e-20011125-153008-0001-fn-foo.txt
+unique-fname rename d41d8cd98f00b204e9800998ecf8427e-20011125-153008-0001-fn-foo.txt --tags
 ```
 
 ### Find duplicate files in a directory

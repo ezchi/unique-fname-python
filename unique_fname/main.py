@@ -61,42 +61,46 @@ def process_file(filename, args):
         base, ext = os.path.splitext(os.path.basename(filename))
         parts = {'orignal_filename': base, 'ext': ext}
 
-    if hasattr(args, 'clear') and args.clear:
-        for field in ['checksum', 'date', 'time', 'number']:
-            if field in parts:
-                del parts[field]
-    else:
-        if hasattr(args, 'add') and not args.add:
-            parts['checksum'] = get_checksum(filename)
-            parts['date'] = get_date(filename)
-            parts['time'] = get_time(filename)
-            parts['number'] = get_number()
-        elif hasattr(args, 'add') and args.add:
-            for field in args.add:
-                if field == 'checksum':
-                    parts['checksum'] = get_checksum(filename)
-                elif field == 'date':
-                    parts['date'] = get_date(filename)
-                elif field == 'time':
-                    parts['time'] = get_time(filename)
-                elif field == 'number':
-                    parts['number'] = get_number()
+    if args.tags is None:
+        args.tags = ['checksum', 'date', 'time', 'number']
 
-        if hasattr(args, 'remove') and args.remove:
-            for field in args.remove:
-                if field in parts:
-                    del parts[field]
+    all_tags = ['checksum', 'date', 'time', 'number']
+
+    for tag in all_tags:
+        if tag in args.tags:
+            if tag == 'checksum':
+                parts['checksum'] = get_checksum(filename)
+            elif tag == 'date':
+                parts['date'] = get_date(filename)
+            elif tag == 'time':
+                parts['time'] = get_time(filename)
+            elif tag == 'number':
+                if 'number' not in parts:
+                    parts['number'] = get_number()
+        else:
+            if tag in parts:
+                del parts[tag]
 
     new_fname = construct_fname(parts, os.path.dirname(filename))
 
-    if args.rename:
-        i = 1
-        while os.path.exists(new_fname) and new_fname != filename:
-            i += 1
-            parts['number'] = f'{i:04d}'
-            new_fname = construct_fname(parts, os.path.dirname(filename))
+    if new_fname == filename:
+        return
 
-        if new_fname != filename:
+    if args.rename:
+        if os.path.exists(new_fname):
+            if 'number' in parts:
+                i = 1
+                if parts['number']:
+                    i = int(parts['number'])
+                while os.path.exists(new_fname):
+                    i += 1
+                    parts['number'] = f'{i:04d}'
+                    new_fname = construct_fname(parts, os.path.dirname(filename))
+                os.rename(filename, new_fname)
+            else:
+                # Collision and no number to increment, so skip rename
+                return
+        else:
             os.rename(filename, new_fname)
     else:
         if new_fname != filename:
@@ -127,25 +131,12 @@ def main():
     parser = argparse.ArgumentParser(description='Generate unique filenames.')
     subparsers = parser.add_subparsers(dest='command')
 
-    # Add command
-    add_parser = subparsers.add_parser('add', help='Add optional fields to filename.')
-    add_parser.add_argument('path', help='The path to process. Can be a file, a directory, or a glob pattern.')
-    add_parser.add_argument('--add', nargs='*', choices=['checksum', 'date', 'time', 'number'], help='Add optional fields.')
-    add_parser.add_argument('--rename', action='store_true', help='Rename the file.')
-    add_parser.add_argument('-r', '--recursive', action='store_true', help='Recursively process files in subdirectories.')
-
-    # Remove command
-    remove_parser = subparsers.add_parser('remove', help='Remove optional fields from filename.')
-    remove_parser.add_argument('path', help='The path to process. Can be a file, a directory, or a glob pattern.')
-    remove_parser.add_argument('--remove', nargs='+', choices=['checksum', 'date', 'time', 'number'], help='Remove optional fields.')
-    remove_parser.add_argument('--rename', action='store_true', help='Rename the file.')
-    remove_parser.add_argument('-r', '--recursive', action='store_true', help='Recursively process files in subdirectories.')
-
-    # Clear command
-    clear_parser = subparsers.add_parser('clear', help='Clear all optional fields from filename.')
-    clear_parser.add_argument('path', help='The path to process. Can be a file, a directory, or a glob pattern.')
-    clear_parser.add_argument('--rename', action='store_true', help='Rename the file.')
-    clear_parser.add_argument('-r', '--recursive', action='store_true', help='Recursively process files in subdirectories.')
+    # Rename command
+    rename_parser = subparsers.add_parser('rename', help='Rename a file with the given tags.')
+    rename_parser.add_argument('path', help='The path to process. Can be a file, a directory, or a glob pattern.')
+    rename_parser.add_argument('--tags', nargs='*', choices=['checksum', 'date', 'time', 'number'], help='The tags to include in the filename.')
+    rename_parser.add_argument('--rename', action='store_true', help='Rename the file.')
+    rename_parser.add_argument('-r', '--recursive', action='store_true', help='Recursively process files in subdirectories.')
 
     # Find-dups command
     find_dups_parser = subparsers.add_parser('find-dups', help='Find files with the same MD5 checksum.')
@@ -155,7 +146,7 @@ def main():
 
     if args.command == 'find-dups':
         find_dups(args.path)
-    elif args.command in ['add', 'remove', 'clear']:
+    elif args.command == 'rename':
         if os.path.isdir(args.path):
             if args.recursive:
                 for dirpath, _, filenames in os.walk(args.path):
