@@ -61,17 +61,17 @@ def process_file(filename, args):
         base, ext = os.path.splitext(os.path.basename(filename))
         parts = {'orignal_filename': base, 'ext': ext}
 
-    if args.clear:
+    if hasattr(args, 'clear') and args.clear:
         for field in ['checksum', 'date', 'time', 'number']:
             if field in parts:
                 del parts[field]
     else:
-        if not args.add and not args.remove and not args.clear:
+        if hasattr(args, 'add') and not args.add:
             parts['checksum'] = get_checksum(filename)
             parts['date'] = get_date(filename)
             parts['time'] = get_time(filename)
             parts['number'] = get_number()
-        if args.add:
+        elif hasattr(args, 'add') and args.add:
             for field in args.add:
                 if field == 'checksum':
                     parts['checksum'] = get_checksum(filename)
@@ -82,54 +82,102 @@ def process_file(filename, args):
                 elif field == 'number':
                     parts['number'] = get_number()
 
-        if args.remove:
+        if hasattr(args, 'remove') and args.remove:
             for field in args.remove:
                 if field in parts:
                     del parts[field]
 
     new_fname = construct_fname(parts, os.path.dirname(filename))
+
     if args.rename:
         i = 1
-        while os.path.exists(new_fname):
+        while os.path.exists(new_fname) and new_fname != filename:
             i += 1
             parts['number'] = f'{i:04d}'
             new_fname = construct_fname(parts, os.path.dirname(filename))
-        os.rename(filename, new_fname)
+
+        if new_fname != filename:
+            os.rename(filename, new_fname)
     else:
-        print(new_fname)
+        if new_fname != filename:
+            print(new_fname)
+
+def find_dups(path):
+    checksums = {}
+    for dirpath, _, filenames in os.walk(path):
+        for filename in filenames:
+            if filename.startswith('.'):
+                continue
+            filepath = os.path.join(dirpath, filename)
+            if os.path.isfile(filepath):
+                parts = parse_fname(filepath)
+                if parts and parts.get('checksum'):
+                    checksum = parts['checksum']
+                    if checksum not in checksums:
+                        checksums[checksum] = []
+                    checksums[checksum].append(filepath)
+
+    for checksum, files in checksums.items():
+        if len(files) > 1:
+            print(f'Files with checksum: {checksum}')
+            for file in files:
+                print(f'  {file}')
 
 def main():
     parser = argparse.ArgumentParser(description='Generate unique filenames.')
-    parser.add_argument('path', help='The path to process. Can be a file, a directory, or a glob pattern.')
-    parser.add_argument('--add', nargs='+', choices=['checksum', 'date', 'time', 'number'], help='Add optional fields.')
-    parser.add_argument('--remove', nargs='+', choices=['checksum', 'date', 'time', 'number'], help='Remove optional fields.')
-    parser.add_argument('--clear', action='store_true', help='Clear all optional fields.')
-    parser.add_argument('--rename', action='store_true', help='Rename the file.')
-    parser.add_argument('-r', '--recursive', action='store_true', help='Recursively process files in subdirectories.')
+    subparsers = parser.add_subparsers(dest='command')
+
+    # Add command
+    add_parser = subparsers.add_parser('add', help='Add optional fields to filename.')
+    add_parser.add_argument('path', help='The path to process. Can be a file, a directory, or a glob pattern.')
+    add_parser.add_argument('--add', nargs='*', choices=['checksum', 'date', 'time', 'number'], help='Add optional fields.')
+    add_parser.add_argument('--rename', action='store_true', help='Rename the file.')
+    add_parser.add_argument('-r', '--recursive', action='store_true', help='Recursively process files in subdirectories.')
+
+    # Remove command
+    remove_parser = subparsers.add_parser('remove', help='Remove optional fields from filename.')
+    remove_parser.add_argument('path', help='The path to process. Can be a file, a directory, or a glob pattern.')
+    remove_parser.add_argument('--remove', nargs='+', choices=['checksum', 'date', 'time', 'number'], help='Remove optional fields.')
+    remove_parser.add_argument('--rename', action='store_true', help='Rename the file.')
+    remove_parser.add_argument('-r', '--recursive', action='store_true', help='Recursively process files in subdirectories.')
+
+    # Clear command
+    clear_parser = subparsers.add_parser('clear', help='Clear all optional fields from filename.')
+    clear_parser.add_argument('path', help='The path to process. Can be a file, a directory, or a glob pattern.')
+    clear_parser.add_argument('--rename', action='store_true', help='Rename the file.')
+    clear_parser.add_argument('-r', '--recursive', action='store_true', help='Recursively process files in subdirectories.')
+
+    # Find-dups command
+    find_dups_parser = subparsers.add_parser('find-dups', help='Find files with the same MD5 checksum.')
+    find_dups_parser.add_argument('path', help='The path to scan for duplicate files.')
 
     args = parser.parse_args()
 
-    if os.path.isdir(args.path):
-        if args.recursive:
-            for dirpath, _, filenames in os.walk(args.path):
-                for filename in filenames:
+    if args.command == 'find-dups':
+        find_dups(args.path)
+    elif args.command in ['add', 'remove', 'clear']:
+        if os.path.isdir(args.path):
+            if args.recursive:
+                for dirpath, _, filenames in os.walk(args.path):
+                    for filename in filenames:
+                        if filename.startswith('.'):
+                            continue
+                        filepath = os.path.join(dirpath, filename)
+                        process_file(filepath, args)
+            else:
+                for filename in os.listdir(args.path):
                     if filename.startswith('.'):
                         continue
-                    filepath = os.path.join(dirpath, filename)
-                    process_file(filepath, args)
+                    filepath = os.path.join(args.path, filename)
+                    if os.path.isfile(filepath):
+                        process_file(filepath, args)
         else:
-            for filename in os.listdir(args.path):
-                if filename.startswith('.'):
+            for filename in glob.glob(args.path):
+                if os.path.basename(filename).startswith('.'):
                     continue
-                filepath = os.path.join(args.path, filename)
-                if os.path.isfile(filepath):
-                    process_file(filepath, args)
-    else:
-        for filename in glob.glob(args.path):
-            if os.path.basename(filename).startswith('.'):
-                continue
-            if os.path.isfile(filename):
-                process_file(filename, args)
+                if os.path.isfile(filename):
+                    process_file(filename, args)
+
 
 if __name__ == '__main__':
     main()
