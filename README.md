@@ -15,12 +15,12 @@ pip install .
 ### Rename files
 
 ```bash
-unique-fname rename <path> [--tags <tags>] [--rename] [-r]
+unique-fname rename <path> [--tags <tags>] [--dry-run] [-r]
 ```
 
 -   `<path>`: The path to process. Can be a file, a directory, or a glob pattern.
 -   `--tags <tags>`: The tags to include in the filename. Can be `checksum`, `date`, `time`, `number`.
--   `--rename`: Rename the file instead of printing the new name.
+-   `--dry-run`: Print the new name without renaming the file.
 -   `-r`, `--recursive`: Recursively process files in subdirectories.
 
 If `--tags` is not specified, all tags will be added by default.
@@ -49,10 +49,10 @@ unique-fname rename foo.txt
 unique-fname rename "*.txt" --tags checksum date
 ```
 
-### Rename all files in the `~/tmp/test` directory recursively
+### Dry run renaming all files in the `~/tmp/test` directory recursively
 
 ```bash
-unique-fname rename ~/tmp/test -r --rename
+unique-fname rename ~/tmp/test -r --dry-run
 ```
 
 ### Remove the date field from a file

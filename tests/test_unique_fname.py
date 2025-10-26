@@ -22,7 +22,7 @@ class TestUniqueFname(unittest.TestCase):
         shutil.rmtree('test_dir')
 
     def test_hidden_file(self):
-        result = subprocess.run(['python3', 'unique_fname/main.py', 'rename', 'test_dir', '--recursive'], capture_output=True, text=True)
+        result = subprocess.run(['python3', 'unique_fname/main.py', 'rename', 'test_dir', '--recursive', '--dry-run'], capture_output=True, text=True)
         self.assertNotIn('hidden', result.stdout)
 
     def test_parse_fname(self):
@@ -51,7 +51,7 @@ class TestUniqueFname(unittest.TestCase):
         with open(path, 'w') as f:
             f.write('test_rename')
         checksum = main.get_checksum(path)
-        result = subprocess.run(['python3', 'unique_fname/main.py', 'rename', path, '--tags', 'checksum', '--rename'], capture_output=True, text=True)
+        result = subprocess.run(['python3', 'unique_fname/main.py', 'rename', path, '--tags', 'checksum'], capture_output=True, text=True)
         self.assertEqual(result.stdout, '')
         self.assertFalse(os.path.exists(path))
         new_fname = checksum + '-fn-test_rename.txt'
@@ -62,7 +62,7 @@ class TestUniqueFname(unittest.TestCase):
         checksum = main.get_checksum(path)
         date = main.get_date(path)
         time = main.get_time(path)
-        result = subprocess.run(['python3', 'unique_fname/main.py', 'rename', path], capture_output=True, text=True)
+        result = subprocess.run(['python3', 'unique_fname/main.py', 'rename', path, '--dry-run'], capture_output=True, text=True)
         self.assertIn(checksum, result.stdout)
         self.assertIn(date, result.stdout)
         self.assertIn(time, result.stdout)
@@ -76,13 +76,13 @@ class TestUniqueFname(unittest.TestCase):
         new_fname = checksum + '-fn-test_rename_existing.txt'
         with open('test_dir/' + new_fname, 'w') as f:
             f.write('test_rename_existing')
-        result = subprocess.run(['python3', 'unique_fname/main.py', 'rename', path, '--tags', 'checksum', '--rename'], capture_output=True, text=True)
+        result = subprocess.run(['python3', 'unique_fname/main.py', 'rename', path, '--tags', 'checksum'], capture_output=True, text=True)
         self.assertEqual(result.stdout, '')
         self.assertTrue(os.path.exists(path))
         self.assertTrue(os.path.exists('test_dir/' + new_fname))
 
     def test_recursive(self):
-        result = subprocess.run(['python3', 'unique_fname/main.py', 'rename', 'test_dir', '--tags', 'checksum', '--recursive'], capture_output=True, text=True)
+        result = subprocess.run(['python3', 'unique_fname/main.py', 'rename', 'test_dir', '--tags', 'checksum', '--recursive', '--dry-run'], capture_output=True, text=True)
         self.assertIn(main.get_checksum('test_dir/test1.txt'), result.stdout)
         self.assertIn(main.get_checksum('test_dir/test2.log'), result.stdout)
         self.assertIn(main.get_checksum('test_dir/sub_dir/test3.txt'), result.stdout)
@@ -93,8 +93,8 @@ class TestUniqueFname(unittest.TestCase):
         with open('test_dir/dup2.txt', 'w') as f:
             f.write('dup')
         checksum = main.get_checksum('test_dir/dup1.txt')
-        subprocess.run(['python3', 'unique_fname/main.py', 'rename', 'test_dir/dup1.txt', '--tags', 'checksum', '--rename'], capture_output=True, text=True)
-        subprocess.run(['python3', 'unique_fname/main.py', 'rename', 'test_dir/dup2.txt', '--tags', 'checksum', '--rename'], capture_output=True, text=True)
+        subprocess.run(['python3', 'unique_fname/main.py', 'rename', 'test_dir/dup1.txt', '--tags', 'checksum'], capture_output=True, text=True)
+        subprocess.run(['python3', 'unique_fname/main.py', 'rename', 'test_dir/dup2.txt', '--tags', 'checksum'], capture_output=True, text=True)
         result = subprocess.run(['python3', 'unique_fname/main.py', 'find-dups', 'test_dir'], capture_output=True, text=True)
         self.assertIn(f'Files with checksum: {checksum}', result.stdout)
         self.assertIn('dup1.txt', result.stdout)

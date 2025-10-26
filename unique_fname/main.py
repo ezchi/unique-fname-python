@@ -86,7 +86,7 @@ def process_file(filename, args):
     if new_fname == filename:
         return
 
-    if args.rename:
+    if not args.dry_run:
         if os.path.exists(new_fname):
             if 'number' in parts:
                 i = 1
@@ -135,7 +135,7 @@ def main():
     rename_parser = subparsers.add_parser('rename', help='Rename a file with the given tags.')
     rename_parser.add_argument('path', help='The path to process. Can be a file, a directory, or a glob pattern.')
     rename_parser.add_argument('--tags', nargs='*', choices=['checksum', 'date', 'time', 'number'], help='The tags to include in the filename.')
-    rename_parser.add_argument('--rename', action='store_true', help='Rename the file.')
+    rename_parser.add_argument('--dry-run', action='store_true', help='Print the new name without renaming the file.')
     rename_parser.add_argument('-r', '--recursive', action='store_true', help='Recursively process files in subdirectories.')
 
     # Find-dups command
